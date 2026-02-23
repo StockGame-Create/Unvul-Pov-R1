@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>unvul-pov — DB-free File URL</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600;800&display=swap');
+
+  :root {
+    --bg: #08090a;
+    --surface: #0f1011;
+    --border: #1e2022;
+    --accent: #c8ff00;
+    --accent2: #ff4455;
+    --text: #eeeef0;
+    --muted: #4a4d52;
+    --radius: 3px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(200,255,0,0.03) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(200,255,0,0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    padding: 1.2rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .logo-mark {
+    width: 24px; height: 24px;
+    background: var(--accent);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: #000;
+    font-weight: 800;
+  }
+
+  .logo-text { color: var(--text); }
+  .logo-text span { color: var(--accent); }
+
+  .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.2rem 0.6rem;
+    border-radius: 2px;
+    letter-spacing: 0.12em;
+  }
+
+  /* ── AUTH ── */
+  #authSection {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.8rem;
+  }
+
+  .auth-header { display: flex; flex-direction: column; gap: 0.6rem; }
+
+  .auth-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 1;
+  }
+
+  .auth-title span { color: var(--accent); }
+
+  .auth-sub {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .features { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .feature {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .feature:last-child { border-bottom: none; }
+  .feature .check { color: var(--accent); }
+
+  .google-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: var(--radius);
+    padding: 0.85rem 1.5rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    transition: opacity 0.15s;
+    width: 100%;
+    letter-spacing: -0.01em;
+  }
+
+  .google-btn:hover { opacity: 0.88; }
+
+  .google-icon {
+    width: 16px; height: 16px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E") center/contain no-repeat;
+    flex-shrink: 0;
+  }
+
+  /* ── APP ── */
+  #appSection {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 2rem 2.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .panel { display: flex; flex-direction: column; gap: 1.2rem; }
+
+  h2 {
+    font-size: 0.62rem;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .user-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.9rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .user-card img {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    object-fit: cover;
+  }
+
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 0.82rem; font-weight: 700; }
+  .user-email { font-family: 'Space Mono', monospace; font-size: 0.62rem; color: var(--muted); margin-top: 0.1rem; }
+
+  .api-key-strip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.7rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .key-label { font-family: 'Space Mono', monospace; font-size: 0.58rem; color: var(--muted); margin-bottom: 0.2rem; }
+  .key-val { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--accent); }
+
+  button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.55rem 1rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 800; }
+  button.primary:hover { opacity: 0.85; color: #000; }
+  button.danger { border-color: #2a1215; color: var(--accent2); }
+  button.danger:hover { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+  .btn-sm { padding: 0.28rem 0.6rem; font-size: 0.68rem; }
+
+  .dropzone {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.18s;
+    background: var(--surface);
+  }
+
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(200,255,0,0.02);
+  }
+
+  .dropzone input { display: none; }
+  .dz-icon { font-size: 1.8rem; display: block; margin-bottom: 0.7rem; }
+  .dropzone p { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+  .dropzone strong { color: var(--text); }
+
+  .file-list { display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto; }
+
+  .file-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    animation: slideIn 0.18s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .file-icon { font-size: 1rem; flex-shrink: 0; }
+  .file-info { flex: 1; min-width: 0; }
+  .file-name { font-size: 0.76rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-meta { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--muted); margin-top: 0.15rem; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .stat { background: var(--surface); padding: 0.8rem; text-align: center; }
+  .stat-val { font-size: 1.3rem; font-weight: 800; color: var(--accent); letter-spacing: -0.03em; }
+  .stat-label { font-family: 'Space Mono', monospace; font-size: 0.55rem; color: var(--muted); margin-top: 0.2rem; letter-spacing: 0.1em; }
+
+  .box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .box-label { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--muted); letter-spacing: 0.1em; }
+
+  .url-display {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.7rem 0.9rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    word-break: break-all;
+    line-height: 1.7;
+    min-height: 52px;
+  }
+
+  .url-display.empty { color: var(--muted); font-style: italic; }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.55rem 0.9rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input:focus { border-color: var(--accent); }
+
+  .row { display: flex; gap: 0.4rem; }
+
+  .result-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.67rem;
+    line-height: 2;
+    color: var(--muted);
+    min-height: 100px;
+  }
+
+  .result-box .val { color: var(--text); }
+  .result-box .ok { color: var(--accent); }
+  .result-box .err { color: var(--accent2); }
+
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.63rem;
+    line-height: 1.9;
+    color: #666;
+  }
+
+  .c-tag { color: #888; }
+  .c-attr { color: var(--accent); }
+  .c-val { color: #ff9944; }
+  .c-comment { color: #333; }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--accent);
+    color: #000;
+    padding: 0.7rem 1.3rem;
+    border-radius: var(--radius);
+    font-weight: 800;
+    font-size: 0.78rem;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1000;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+
+  @media (max-width: 740px) {
+    #appSection { grid-template-columns: 1fr; padding: 1.2rem; }
+    header { padding: 1rem 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">UV</div>
+    <span class="logo-text">unvul<span>-pov</span></span>
+  </div>
+  <span class="badge">NO DB · NO SERVER · NO COST</span>
+</header>
+
+<!-- AUTH -->
+<div id="authSection">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-title">unvul<span>-pov</span></div>
+      <p class="auth-sub">파일마다 고유 암호화 URL을 생성합니다.<br>DB 없이, 서버 없이, 비용 없이.</p>
+    </div>
+
+    <div class="features">
+      <div class="feature"><span class="check">✓</span> DB 완전 제거 — URL이 곧 데이터</div>
+      <div class="feature"><span class="check">✓</span> AES-256 암호화 — 본인만 복호화 가능</div>
+      <div class="feature"><span class="check">✓</span> 파일은 로컬 보관 — 업로드 비용 없음</div>
+      <div class="feature"><span class="check">✓</span> Firebase Auth — 안전한 키 관리</div>
+    </div>
+
+    <button class="google-btn" onclick="loginWithGoogle()">
+      <div class="google-icon"></div>
+      Google로 시작하기
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appSection">
+
+  <!-- LEFT -->
+  <div class="panel">
+
+    <h2>01 — 계정</h2>
+
+    <div class="user-card">
+      <img id="userAvatar" src="" alt="">
+      <div class="user-info">
+        <div class="user-name" id="userName">—</div>
+        <div class="user-email" id="userEmail">—</div>
+      </div>
+      <button class="danger btn-sm" onclick="logout()">로그아웃</button>
+    </div>
+
+    <div class="api-key-strip">
+      <div>
+        <div class="key-label">API KEY</div>
+        <div class="key-val" id="apiKeyDisplay">—</div>
+      </div>
+      <button class="btn-sm" onclick="copyApiKey()">복사</button>
+    </div>
+
+    <h2>02 — 파일 업로드</h2>
+
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" multiple accept="image/*,video/*" onchange="handleFiles(this.files)">
+      <span class="dz-icon">◈</span>
+      <p><strong>클릭하거나 드래그</strong>하여 파일 추가<br>JPG · PNG · MP4 · GIF 지원</p>
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val" id="statFiles">0</div>
+        <div class="stat-label">FILES</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="statUrls">0</div>
+        <div class="stat-label">URLS</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="statSize">0B</div>
+        <div class="stat-label">SIZE</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel">
+
+    <h2>03 — 생성된 URL</h2>
+
+    <div class="box">
+      <div class="box-label">ENCRYPTED URL</div>
+      <div class="url-display empty" id="urlDisplay">파일을 업로드하면 암호화된 URL이 생성됩니다...</div>
+      <div style="display:flex; gap:0.4rem; justify-content:flex-end;">
+        <button class="btn-sm" onclick="copyUrl()">URL 복사</button>
+        <button class="btn-sm primary" onclick="copyTag()">IMG 태그 복사</button>
+      </div>
+    </div>
+
+    <h2>04 — 복호화 테스트</h2>
+
+    <div class="box">
+      <div class="box-label">URL → 메타데이터</div>
+      <div class="row">
+        <input type="text" id="decodeInput" placeholder="unvul://f/eyJ..." />
+        <button class="primary" onclick="decodeUrl()">복호화</button>
+      </div>
+      <div class="result-box" id="decodeResult">
+        <span>// 결과가 여기 표시됩니다</span>
+      </div>
+    </div>
+
+    <h2>05 — 사용 예시</h2>
+
+    <div class="box">
+      <div class="box-label">HTML 삽입 코드</div>
+      <div class="code-block">
+        <span class="c-comment">&lt;!-- SDK 추가 --&gt;</span><br>
+        &lt;<span class="c-attr">script</span> src=<span class="c-val">"https://unvul-pov.dev/sdk.js"</span><br>
+        &nbsp;&nbsp;api-key=<span class="c-val" id="sdkSnippet">"lclnk_..."</span>&gt;&lt;/script&gt;<br><br>
+        <span class="c-comment">&lt;!-- 이미지 사용 --&gt;</span><br>
+        &lt;<span class="c-attr">img</span> src=<span class="c-val" id="exampleTag">"unvul://f/..."</span>&gt;
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyBPQo5iEO_ECRSafBqPCcAKQ1FC5mOCuoY",
+    authDomain: "unvul-pov.firebaseapp.com",
+    projectId: "unvul-pov",
+    storageBucket: "unvul-pov.firebasestorage.app",
+    messagingSenderId: "124390336020",
+    appId: "1:124390336020:web:59aaf1f1391394c471a901"
+  });
+
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  // UID → deterministic API Key
+  async function deriveApiKey(uid) {
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode('unvul-pov-' + uid));
+    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    return 'upov_' + hex.substring(0, 32);
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const key = await deriveApiKey(user.uid);
+      window._key = key;
+      window._user = user;
+
+      document.getElementById('authSection').style.display = 'none';
+      document.getElementById('appSection').style.display = 'grid';
+      document.getElementById('userAvatar').src = user.photoURL || '';
+      document.getElementById('userName').textContent = user.displayName;
+      document.getElementById('userEmail').textContent = user.email;
+      document.getElementById('apiKeyDisplay').textContent = key.substring(0, 16) + '...';
+      document.getElementById('sdkSnippet').textContent = '"' + key.substring(0, 16) + '..."';
+      showToast('✓ 환영합니다, ' + user.displayName.split(' ')[0]);
+    } else {
+      window._key = null;
+      window._user = null;
+      document.getElementById('authSection').style.display = 'flex';
+      document.getElementById('appSection').style.display = 'none';
+    }
+  });
+
+  window.loginWithGoogle = () => signInWithPopup(auth, provider).catch(e => showToast('✗ ' + e.message, true));
+  window.logout = () => signOut(auth);
+</script>
+
+<!-- Main Logic -->
+<script>
+  // ─── Crypto ───────────────────────────────────────────────
+  async function deriveKey(secret) {
+    const enc = new TextEncoder();
+    const km = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'PBKDF2' }, false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: enc.encode('unvul-pov-salt'), iterations: 10000, hash: 'SHA-256' },
+      km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+    );
+  }
+
+  async function encrypt(data, secret) {
+    const key = await deriveKey(secret);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = new TextEncoder();
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data)));
+    const combined = new Uint8Array(12 + ct.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(ct), 12);
+    return btoa(String.fromCharCode(...combined)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  }
+
+  async function decrypt(b64, secret) {
+    const key = await deriveKey(secret);
+    const bin = Uint8Array.from(atob(b64.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
+    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bin.slice(0,12) }, key, bin.slice(12));
+    return JSON.parse(new TextDecoder().decode(dec));
+  }
+
+  // ─── State ────────────────────────────────────────────────
+  let files = [], urls = [], currentUrl = null;
+
+  // ─── Files ────────────────────────────────────────────────
+  window.handleFiles = async (fileList) => {
+    if (!window._key) { showToast('⚠ 로그인 필요', true); return; }
+    for (const f of Array.from(fileList)) {
+      files.push(f);
+      await genUrl(f);
+    }
+    updateStats();
+  };
+
+  async function genUrl(file) {
+    const meta = {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified,
+      path: file.name,
+      uid: window._user?.uid,
+      ts: Date.now()
+    };
+    const encoded = await encrypt(meta, window._key);
+    const url = 'unvul://f/' + encoded;
+    urls.push({ file, url });
+    renderFileItem(file, url, urls.length - 1);
+    setUrl(url);
+  }
+
+  function renderFileItem(file, url, idx) {
+    const el = document.createElement('div');
+    el.className = 'file-item';
+    el.innerHTML = `
+      <span class="file-icon">${file.type.startsWith('video') ? '🎬' : '🖼'}</span>
+      <div class="file-info">
+        <div class="file-name">${file.name}</div>
+        <div class="file-meta">${fmt(file.size)} · ${file.type || '?'}</div>
+      </div>
+      <button class="btn-sm" onclick="pick(${idx})">선택</button>
+    `;
+    document.getElementById('fileList').prepend(el);
+  }
+
+  window.pick = (i) => { if (urls[i]) setUrl(urls[i].url); };
+
+  function setUrl(url) {
+    currentUrl = url;
+    const d = document.getElementById('urlDisplay');
+    d.textContent = url;
+    d.classList.remove('empty');
+    document.getElementById('decodeInput').value = url;
+    document.getElementById('exampleTag').textContent = `"${url}"`;
+  }
+
+  // ─── Decode ───────────────────────────────────────────────
+  window.decodeUrl = async () => {
+    if (!window._key) { showToast('⚠ 로그인 필요', true); return; }
+    const raw = document.getElementById('decodeInput').value.trim();
+    const out = document.getElementById('decodeResult');
+    if (!raw.startsWith('unvul://f/')) {
+      out.innerHTML = '<span class="err">✗ 유효하지 않은 URL 형식</span>';
+      return;
+    }
+    try {
+      const d = await decrypt(raw.replace('unvul://f/', ''), window._key);
+      out.innerHTML = `
+        <span class="ok">✓ 복호화 성공</span><br>
+        NAME&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="val">${d.name}</span><br>
+        TYPE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="val">${d.type}</span><br>
+        SIZE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="val">${fmt(d.size)}</span><br>
+        PATH&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="val">${d.path}</span><br>
+        CREATED&nbsp;&nbsp;<span class="val">${new Date(d.ts).toLocaleString('ko-KR')}</span>
+      `;
+    } catch {
+      out.innerHTML = '<span class="err">✗ 복호화 실패 — 키가 다릅니다</span>';
+    }
+  };
+
+  // ─── Copy ─────────────────────────────────────────────────
+  window.copyUrl = () => {
+    if (!currentUrl) { showToast('파일을 먼저 업로드하세요', true); return; }
+    navigator.clipboard.writeText(currentUrl).then(() => showToast('✓ URL 복사됨'));
+  };
+
+  window.copyTag = () => {
+    if (!currentUrl) { showToast('파일을 먼저 업로드하세요', true); return; }
+    navigator.clipboard.writeText(`<img src="${currentUrl}" />`).then(() => showToast('✓ IMG 태그 복사됨'));
+  };
+
+  window.copyApiKey = () => {
+    if (!window._key) return;
+    navigator.clipboard.writeText(window._key).then(() => showToast('✓ API Key 복사됨'));
+  };
+
+  // ─── Stats ────────────────────────────────────────────────
+  function updateStats() {
+    document.getElementById('statFiles').textContent = files.length;
+    document.getElementById('statUrls').textContent = urls.length;
+    document.getElementById('statSize').textContent = fmt(files.reduce((s,f) => s+f.size, 0));
+  }
+
+  function fmt(b) {
+    if (b < 1024) return b + 'B';
+    if (b < 1048576) return (b/1024).toFixed(1) + 'KB';
+    return (b/1048576).toFixed(1) + 'MB';
+  }
+
+  // ─── Toast ────────────────────────────────────────────────
+  window.showToast = (msg, err = false) => {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = err ? 'var(--accent2)' : 'var(--accent)';
+    t.style.color = err ? '#fff' : '#000';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2400);
+  };
+
+  // ─── Drag & Drop ──────────────────────────────────────────
+  const dz = document.getElementById('dropzone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+</script>
+
+</body>
+</html>
