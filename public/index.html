@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>unvul-pov SDK 테스트</title>
+<title>unvul-pov — DB-free File URL Service</title>
+<meta name="description" content="파일마다 고유 암호화 URL을 생성합니다. DB 없이, 서버 없이, 비용 없이.">
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600;800&display=swap');
@@ -25,504 +26,579 @@
     background: var(--bg);
     color: var(--text);
     font-family: 'DM Sans', sans-serif;
-    padding: 3rem;
-    max-width: 900px;
-    margin: 0 auto;
+    min-height: 100vh;
+    overflow-x: hidden;
   }
 
-  header {
+  /* glow */
+  body::before {
+    content: '';
+    position: fixed;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(200,255,0,0.06) 0%, transparent 70%);
+    top: -200px; left: -200px;
+    pointer-events: none;
+  }
+
+  /* ── NAV ── */
+  nav {
+    padding: 1.2rem 3rem;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 3rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(8,9,10,0.9);
+    backdrop-filter: blur(12px);
+    z-index: 100;
   }
 
-  .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.04em; }
+  .logo {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .logo-mark {
+    width: 22px; height: 22px;
+    background: var(--accent);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    color: #000;
+    font-weight: 800;
+  }
+
   .logo span { color: var(--accent); }
 
-  .badge {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.6rem;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 0.2rem 0.6rem;
-    border-radius: 2px;
-    letter-spacing: 0.1em;
-  }
+  .nav-links { display: flex; align-items: center; gap: 2rem; }
 
-  h2 {
-    font-size: 0.62rem;
-    font-family: 'Space Mono', monospace;
-    letter-spacing: 0.18em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-    margin-top: 2.5rem;
-  }
-
-  h2:first-of-type { margin-top: 0; }
-
-  .box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.2rem;
-    margin-bottom: 1rem;
-  }
-
-  .code-block {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem 1.2rem;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.7rem;
-    line-height: 2;
-    color: #888;
-    margin-bottom: 1rem;
-    overflow-x: auto;
-  }
-
-  .c-tag { color: #aaa; }
-  .c-attr { color: var(--accent); }
-  .c-val { color: #ff9944; }
-  .c-comment { color: #333; }
-  .c-fn { color: #88aaff; }
-  .c-str { color: #ff9944; }
-
-  /* URL 생성기 */
-  .generator {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-  }
-
-  .form-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-  }
-
-  label {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.62rem;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-
-  input[type="text"], input[type="url"] {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.6rem 0.9rem;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.72rem;
-    border-radius: var(--radius);
-    outline: none;
-    transition: border-color 0.15s;
-    width: 100%;
-  }
-
-  input:focus { border-color: var(--accent); }
-
-  .row { display: flex; gap: 0.5rem; }
-
-  button {
-    background: var(--accent);
-    border: none;
-    color: #000;
-    padding: 0.65rem 1.3rem;
-    font-family: 'DM Sans', sans-serif;
+  .nav-links a {
     font-size: 0.82rem;
-    font-weight: 800;
-    cursor: pointer;
-    border-radius: var(--radius);
-    transition: opacity 0.15s;
-    white-space: nowrap;
-  }
-
-  button:hover { opacity: 0.85; }
-
-  button.secondary {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  button.secondary:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
-
-  .output {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.8rem 1rem;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.67rem;
-    color: var(--accent);
-    word-break: break-all;
-    line-height: 1.7;
-    min-height: 50px;
-  }
-
-  .output.empty { color: var(--muted); font-style: italic; }
-
-  /* Preview */
-  .preview-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
-  }
-
-  .preview-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-
-  .preview-card img {
-    width: 100%;
-    height: 140px;
-    object-fit: cover;
-    display: block;
-    background: var(--bg);
-  }
-
-  .preview-card img[data-unvul-status="loading"] {
-    filter: blur(4px);
-    opacity: 0.5;
-  }
-
-  .preview-card img[data-unvul-status="error"] {
-    filter: grayscale(1);
-    opacity: 0.3;
-  }
-
-  .preview-card img[data-unvul-status="resolved"] {
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  .preview-info {
-    padding: 0.6rem 0.8rem;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.6rem;
     color: var(--muted);
-    display: flex;
-    justify-content: space-between;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .nav-links a:hover { color: var(--text); }
+
+  .nav-cta {
+    background: var(--accent);
+    color: #000 !important;
+    padding: 0.5rem 1.2rem;
+    border-radius: var(--radius);
+    font-weight: 800 !important;
+  }
+
+  .nav-cta:hover { opacity: 0.85; }
+
+  /* ── HERO ── */
+  .hero {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 7rem 3rem 5rem;
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-flex;
     align-items: center;
+    gap: 0.5rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    border: 1px solid rgba(200,255,0,0.2);
+    padding: 0.3rem 0.8rem;
+    border-radius: 100px;
+    margin-bottom: 2rem;
+    letter-spacing: 0.1em;
   }
 
-  .status-dot {
+  .hero-badge::before {
+    content: '';
     width: 6px; height: 6px;
+    background: var(--accent);
     border-radius: 50%;
-    background: var(--muted);
-    flex-shrink: 0;
+    animation: blink 2s infinite;
   }
 
-  .status-dot.resolved { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-  .status-dot.loading { background: #ffaa00; animation: pulse 1s infinite; }
-  .status-dot.error { background: var(--accent2); }
-
-  @keyframes pulse {
+  @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
   }
 
-  /* Log */
-  .log-box {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.8rem 1rem;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.65rem;
-    line-height: 1.9;
-    max-height: 180px;
-    overflow-y: auto;
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    margin-bottom: 1.5rem;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .hero-sub {
+    font-size: 1.05rem;
     color: var(--muted);
+    line-height: 1.8;
+    max-width: 560px;
+    margin: 0 auto 2.5rem;
   }
 
-  .log-ok { color: var(--accent); }
-  .log-err { color: var(--accent2); }
-  .log-info { color: #88aaff; }
-
-  .divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 2rem 0;
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
 
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
+  .btn-primary {
     background: var(--accent);
     color: #000;
-    padding: 0.7rem 1.3rem;
+    padding: 0.85rem 2rem;
     border-radius: var(--radius);
     font-weight: 800;
-    font-size: 0.78rem;
-    transform: translateY(80px);
-    opacity: 0;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 1000;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: opacity 0.15s;
+    display: inline-block;
   }
 
-  .toast.show { transform: translateY(0); opacity: 1; }
+  .btn-primary:hover { opacity: 0.85; }
+
+  .btn-secondary {
+    color: var(--muted);
+    padding: 0.85rem 2rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    display: inline-block;
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── CODE PREVIEW ── */
+  .code-preview {
+    max-width: 700px;
+    margin: 4rem auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .code-header {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .dot-red { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
+  .dot-yellow { width: 10px; height: 10px; border-radius: 50%; background: #febc2e; }
+  .dot-green { width: 10px; height: 10px; border-radius: 50%; background: #28c840; }
+  .code-title { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-left: 0.5rem; }
+
+  .code-body {
+    padding: 1.5rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 2;
+    color: #888;
+  }
+
+  .c-comment { color: #333; }
+  .c-tag { color: #aaa; }
+  .c-attr { color: var(--accent); }
+  .c-val { color: #ff9944; }
+  .c-url { color: var(--accent); opacity: 0.7; }
+
+  /* ── FEATURES ── */
+  .features {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 4rem 3rem;
+  }
+
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    padding: 2rem;
+    transition: background 0.2s;
+  }
+
+  .feature-card:hover { background: #141516; }
+
+  .feature-icon {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .feature-title {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+
+  .feature-desc {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .how {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 4rem 3rem;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    position: relative;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 1.5rem;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .step { text-align: center; position: relative; }
+
+  .step-num {
+    width: 3rem; height: 3rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 auto 1rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .step-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.6; }
+
+  /* ── PRICING ── */
+  .pricing {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 4rem 3rem;
+  }
+
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .pricing-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2rem;
+  }
+
+  .pricing-card.featured {
+    border-color: var(--accent);
+    background: rgba(200,255,0,0.03);
+  }
+
+  .plan-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    margin-bottom: 1rem;
+  }
+
+  .plan-price {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.3rem;
+  }
+
+  .plan-price span { font-size: 1rem; color: var(--muted); font-weight: 400; }
+  .plan-desc { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+  .plan-features { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem; }
+
+  .plan-feature {
+    font-size: 0.8rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .plan-feature .ok { color: var(--accent); }
+  .plan-feature .no { color: var(--border); }
+
+  .plan-btn {
+    display: block;
+    text-align: center;
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    font-weight: 800;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: opacity 0.15s;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .plan-btn.accent { background: var(--accent); color: #000; border-color: var(--accent); }
+  .plan-btn:hover { opacity: 0.8; }
+
+  /* ── CTA ── */
+  .cta {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 4rem 3rem 6rem;
+    text-align: center;
+  }
+
+  .cta h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    margin-bottom: 1rem;
+  }
+
+  .cta h2 span { color: var(--accent); }
+  .cta p { color: var(--muted); margin-bottom: 2rem; font-size: 0.9rem; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  footer p { font-family: 'Space Mono', monospace; font-size: 0.62rem; color: var(--muted); }
+
+  @media (max-width: 768px) {
+    nav { padding: 1rem 1.5rem; }
+    .hero { padding: 4rem 1.5rem 3rem; }
+    .features, .how, .pricing, .cta { padding: 3rem 1.5rem; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: repeat(2, 1fr); }
+    .pricing-grid { grid-template-columns: 1fr; }
+    .nav-links a:not(.nav-cta) { display: none; }
+    footer { padding: 1rem 1.5rem; flex-direction: column; gap: 0.5rem; text-align: center; }
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">unvul<span>-pov</span> <span style="color:var(--muted); font-size:0.7rem; font-weight:400;">SDK 테스트</span></div>
-  <span class="badge">SDK v0.1.0</span>
-</header>
-
-<!-- STEP 1: API KEY -->
-<h2>01 — API Key 설정</h2>
-<div class="box">
-  <div class="row" style="margin-bottom:0.8rem;">
-    <input type="text" id="apiKeyInput" placeholder="upov_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
-    <button onclick="initSdk()">SDK 초기화</button>
+<nav>
+  <div class="logo">
+    <div class="logo-mark">UV</div>
+    unvul<span>-pov</span>
   </div>
-  <div style="font-family:'Space Mono',monospace; font-size:0.65rem; color:var(--muted);" id="sdkStatus">
-    // SDK 초기화 대기 중
+  <div class="nav-links">
+    <a href="#features">기능</a>
+    <a href="#how">작동 방식</a>
+    <a href="#pricing">요금제</a>
+    <a href="sdk-test.html">SDK 테스트</a>
+    <a href="app.html" class="nav-cta">시작하기 →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">NO DB · NO SERVER · NO COST</div>
+
+  <h1>파일 URL,<br><span>DB 없이</span> 만드세요</h1>
+
+  <p class="hero-sub">
+    Google Drive, S3, Dropbox의 파일 링크를<br>
+    AES-256으로 암호화해 고유 URL을 생성합니다.<br>
+    서버도, DB도, 비용도 필요 없습니다.
+  </p>
+
+  <div class="hero-actions">
+    <a href="app.html" class="btn-primary">무료로 시작하기</a>
+    <a href="sdk-test.html" class="btn-secondary">SDK 테스트 →</a>
+  </div>
+</section>
+
+<!-- CODE PREVIEW -->
+<div class="code-preview">
+  <div class="code-header">
+    <div class="dot-red"></div>
+    <div class="dot-yellow"></div>
+    <div class="dot-green"></div>
+    <span class="code-title">index.html</span>
+  </div>
+  <div class="code-body">
+    <span class="c-comment">&lt;!-- 1. SDK 한 줄 추가 --&gt;</span><br>
+    &lt;<span class="c-tag">script</span> <span class="c-attr">src</span>=<span class="c-val">"https://unvul-pov.vercel.app/sdk.js"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="c-attr">api-key</span>=<span class="c-val">"upov_79757d19..."</span>&gt;&lt;/<span class="c-tag">script</span>&gt;<br><br>
+    <span class="c-comment">&lt;!-- 2. 그냥 img 태그처럼 사용 --&gt;</span><br>
+    &lt;<span class="c-tag">img</span> <span class="c-attr">src</span>=<span class="c-val">"unvul://f/HmoIa7oV55eGOxq4..."</span> /&gt;<br><br>
+    <span class="c-comment">&lt;!-- SDK가 자동으로 실제 URL로 교체 ✓ --&gt;</span><br>
+    &lt;<span class="c-tag">img</span> <span class="c-attr">src</span>=<span class="c-val">"https://drive.google.com/uc?id=xxx"</span> /&gt;
   </div>
 </div>
 
-<!-- STEP 2: URL 생성기 -->
-<h2>02 — unvul URL 생성기</h2>
-<div class="box generator">
-  <div class="form-row">
-    <label>실제 파일 URL (Drive / S3 / Dropbox 등)</label>
-    <input type="url" id="realUrl" placeholder="https://drive.google.com/uc?id=xxx" />
-  </div>
-  <div class="row">
-    <div class="form-row" style="flex:1;">
-      <label>파일명</label>
-      <input type="text" id="fileName" placeholder="photo.jpg" />
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="section-label">// 기능</div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <span class="feature-icon">◈</span>
+      <div class="feature-title">DB 완전 제거</div>
+      <p class="feature-desc">URL 자체에 암호화된 메타데이터를 담습니다. 별도의 데이터베이스가 필요 없습니다.</p>
     </div>
-    <div class="form-row" style="flex:1;">
-      <label>파일 타입</label>
-      <input type="text" id="fileType" placeholder="image/jpeg" />
+    <div class="feature-card">
+      <span class="feature-icon">⬡</span>
+      <div class="feature-title">AES-256 암호화</div>
+      <p class="feature-desc">Web Crypto API 기반의 군사급 암호화. API Key 없이는 복호화가 불가능합니다.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">◎</span>
+      <div class="feature-title">어디서나 사용</div>
+      <p class="feature-desc">Google Drive, S3, Dropbox 등 어떤 저장소든 연결 가능합니다.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⊕</span>
+      <div class="feature-title">SDK 한 줄</div>
+      <p class="feature-desc">script 태그 하나로 설치 완료. img, video, a 태그 자동 처리됩니다.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">◉</span>
+      <div class="feature-title">Firebase Auth</div>
+      <p class="feature-desc">Google 계정으로 로그인. UID 기반으로 API Key가 자동 생성됩니다.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⊞</span>
+      <div class="feature-title">제로 비용</div>
+      <p class="feature-desc">서버 없음, DB 없음. 파일 저장소 비용만 부담하면 됩니다.</p>
     </div>
   </div>
-  <div class="row">
-    <button onclick="generateUrl()">unvul URL 생성</button>
-    <button class="secondary" onclick="copyGenerated()">복사</button>
-    <button class="secondary" onclick="addToPreview()">미리보기에 추가</button>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="section-label">// 작동 방식</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-title">로그인</div>
+      <p class="step-desc">Google 계정으로 로그인하면 API Key가 자동 발급됩니다</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-title">URL 입력</div>
+      <p class="step-desc">Drive / S3 등의 파일 URL을 앱에 입력합니다</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-title">암호화</div>
+      <p class="step-desc">AES-256으로 암호화된 unvul:// URL이 생성됩니다</p>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-title">사용</div>
+      <p class="step-desc">img src에 넣으면 SDK가 자동으로 실제 파일을 불러옵니다</p>
+    </div>
   </div>
-  <div class="output empty" id="generatedUrl">// 생성된 URL이 여기 표시됩니다</div>
-</div>
+</section>
 
-<!-- STEP 3: 코드 예시 -->
-<h2>03 — 사용 코드</h2>
-<div class="code-block">
-  <span class="c-comment">&lt;!-- 1. SDK 추가 (head 또는 body 끝) --&gt;</span><br>
-  &lt;<span class="c-tag">script</span> <span class="c-attr">src</span>=<span class="c-val">"https://unvul-pov.dev/sdk.js"</span><br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="c-attr">api-key</span>=<span class="c-val">"upov_xxx"</span>&gt;&lt;/<span class="c-tag">script</span>&gt;<br><br>
-
-  <span class="c-comment">&lt;!-- 2. 이미지 태그에 unvul:// URL 사용 --&gt;</span><br>
-  &lt;<span class="c-tag">img</span> <span class="c-attr">src</span>=<span class="c-val">"unvul://f/암호화된데이터"</span> /&gt;<br><br>
-
-  <span class="c-comment">&lt;!-- 3. 동영상도 동일 --&gt;</span><br>
-  &lt;<span class="c-tag">video</span> <span class="c-attr">src</span>=<span class="c-val">"unvul://f/암호화된데이터"</span> <span class="c-attr">controls</span> /&gt;<br><br>
-
-  <span class="c-comment">// JS에서 수동으로 URL 생성</span><br>
-  <span class="c-fn">const</span> url = <span class="c-fn">await</span> window.unvul.<span class="c-fn">encode</span>({<br>
-  &nbsp;&nbsp;url: <span class="c-str">'https://drive.google.com/uc?id=xxx'</span>,<br>
-  &nbsp;&nbsp;name: <span class="c-str">'photo.jpg'</span>,<br>
-  &nbsp;&nbsp;type: <span class="c-str">'image/jpeg'</span><br>
-  });<br><br>
-
-  <span class="c-comment">// JS에서 수동으로 복호화</span><br>
-  <span class="c-fn">const</span> meta = <span class="c-fn">await</span> window.unvul.<span class="c-fn">resolve</span>(<span class="c-str">'unvul://f/...'</span>);<br>
-  console.log(meta.url); <span class="c-comment">// 실제 Drive URL</span>
-</div>
-
-<hr class="divider">
-
-<!-- STEP 4: 미리보기 -->
-<h2>04 — 라이브 미리보기</h2>
-<p style="font-size:0.78rem; color:var(--muted); margin-bottom:1rem; line-height:1.6;">
-  SDK가 <code style="font-family:'Space Mono',monospace; color:var(--accent); font-size:0.7rem;">unvul://</code> URL을 감지하여 실제 이미지로 교체합니다.
-</p>
-
-<div class="preview-grid" id="previewGrid">
-  <!-- 동적으로 추가됨 -->
-  <div style="font-family:'Space Mono',monospace; font-size:0.65rem; color:var(--muted); padding:1rem; border:1px dashed var(--border); border-radius:var(--radius); text-align:center;">
-    URL을 생성하고 "미리보기에 추가"를 눌러보세요
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="section-label">// 요금제</div>
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="plan-name">FREE</div>
+      <div class="plan-price">₩0 <span>/ 월</span></div>
+      <p class="plan-desc">개인 프로젝트에 충분합니다</p>
+      <div class="plan-features">
+        <div class="plan-feature"><span class="ok">✓</span> URL 생성 월 1,000회</div>
+        <div class="plan-feature"><span class="ok">✓</span> AES-256 암호화</div>
+        <div class="plan-feature"><span class="ok">✓</span> SDK 사용</div>
+        <div class="plan-feature"><span class="no">✗</span> 커스텀 도메인</div>
+        <div class="plan-feature"><span class="no">✗</span> 팀 공유</div>
+      </div>
+      <a href="app.html" class="plan-btn">무료 시작</a>
+    </div>
+    <div class="pricing-card featured">
+      <div class="plan-name">PRO</div>
+      <div class="plan-price">₩9,900 <span>/ 월</span></div>
+      <p class="plan-desc">프로덕션 서비스에 최적화</p>
+      <div class="plan-features">
+        <div class="plan-feature"><span class="ok">✓</span> URL 생성 무제한</div>
+        <div class="plan-feature"><span class="ok">✓</span> AES-256 암호화</div>
+        <div class="plan-feature"><span class="ok">✓</span> SDK 사용</div>
+        <div class="plan-feature"><span class="ok">✓</span> 커스텀 도메인</div>
+        <div class="plan-feature"><span class="ok">✓</span> 팀 공유</div>
+      </div>
+      <a href="app.html" class="plan-btn accent">Pro 시작하기</a>
+    </div>
   </div>
-</div>
+</section>
 
-<hr class="divider">
+<!-- CTA -->
+<section class="cta">
+  <h2>지금 바로<br><span>무료로</span> 시작하세요</h2>
+  <p>DB 장애도, 비용 걱정도 없는 파일 URL 서비스</p>
+  <a href="app.html" class="btn-primary">Google로 시작하기 →</a>
+</section>
 
-<!-- STEP 5: 로그 -->
-<h2>05 — SDK 로그</h2>
-<div class="log-box" id="logBox">
-  <span class="log-info">// SDK 로그가 여기 표시됩니다</span>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-  // ─── SDK 인라인 (테스트용, 실제는 외부 sdk.js) ───────
-  const SCHEME = 'unvul://f/';
-  const SALT = 'unvul-pov-salt';
-  let _apiKey = null;
-
-  async function deriveKey(secret, usage = ['decrypt']) {
-    const enc = new TextEncoder();
-    const km = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'PBKDF2' }, false, ['deriveKey']);
-    return crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt: enc.encode(SALT), iterations: 10000, hash: 'SHA-256' },
-      km, { name: 'AES-GCM', length: 256 }, false, usage
-    );
-  }
-
-  async function encrypt(data, secret) {
-    const key = await deriveKey(secret, ['encrypt']);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const enc = new TextEncoder();
-    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data)));
-    const combined = new Uint8Array(12 + ct.byteLength);
-    combined.set(iv);
-    combined.set(new Uint8Array(ct), 12);
-    return SCHEME + btoa(String.fromCharCode(...combined)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  }
-
-  async function decrypt(b64, secret) {
-    const key = await deriveKey(secret, ['decrypt']);
-    const bin = Uint8Array.from(atob(b64.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
-    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bin.slice(0,12) }, key, bin.slice(12));
-    return JSON.parse(new TextDecoder().decode(dec));
-  }
-
-  // ─── SDK 초기화 ───────────────────────────────────────
-  window.initSdk = () => {
-    const key = document.getElementById('apiKeyInput').value.trim();
-    if (!key.startsWith('upov_')) {
-      log('✗ 유효하지 않은 API Key', 'err');
-      return;
-    }
-    _apiKey = key;
-    document.getElementById('sdkStatus').innerHTML =
-      `<span style="color:var(--accent);">✓ SDK 초기화 완료</span> — ${key.substring(0,16)}...`;
-    log(`✓ SDK 초기화 — ${key.substring(0,16)}...`, 'ok');
-  };
-
-  // ─── URL 생성 ─────────────────────────────────────────
-  window.generateUrl = async () => {
-    if (!_apiKey) { showToast('⚠ SDK 먼저 초기화하세요', true); return; }
-    const url = document.getElementById('realUrl').value.trim();
-    const name = document.getElementById('fileName').value.trim();
-    const type = document.getElementById('fileType').value.trim();
-
-    if (!url) { showToast('⚠ 실제 파일 URL을 입력하세요', true); return; }
-
-    const meta = { url, name: name || 'file', type: type || 'image/jpeg', ts: Date.now() };
-    const encoded = await encrypt(meta, _apiKey);
-
-    const out = document.getElementById('generatedUrl');
-    out.textContent = encoded;
-    out.classList.remove('empty');
-    log(`✓ URL 생성됨 — ${name || 'file'}`, 'ok');
-  };
-
-  window.copyGenerated = () => {
-    const val = document.getElementById('generatedUrl').textContent;
-    if (!val || val.startsWith('//')) { showToast('⚠ URL을 먼저 생성하세요', true); return; }
-    navigator.clipboard.writeText(val).then(() => showToast('✓ 복사됨'));
-  };
-
-  // ─── 미리보기 추가 ────────────────────────────────────
-  window.addToPreview = async () => {
-    if (!_apiKey) { showToast('⚠ SDK 먼저 초기화하세요', true); return; }
-    const unvulUrl = document.getElementById('generatedUrl').textContent;
-    if (!unvulUrl || !unvulUrl.startsWith(SCHEME)) { showToast('⚠ URL을 먼저 생성하세요', true); return; }
-
-    const grid = document.getElementById('previewGrid');
-
-    // 안내 텍스트 제거
-    const placeholder = grid.querySelector('[style*="dashed"]');
-    if (placeholder) placeholder.remove();
-
-    // 카드 생성 (unvul:// URL 그대로 사용)
-    const card = document.createElement('div');
-    card.className = 'preview-card';
-
-    const img = document.createElement('img');
-    img.setAttribute('src', unvulUrl);
-    img.setAttribute('data-unvul-status', 'loading');
-    img.alt = '';
-
-    const info = document.createElement('div');
-    info.className = 'preview-info';
-    info.innerHTML = `<span id="cardLabel-${Date.now()}">처리 중...</span><div class="status-dot loading" id="cardDot-${Date.now()}"></div>`;
-
-    card.appendChild(img);
-    card.appendChild(info);
-    grid.appendChild(card);
-
-    const labelId = info.querySelector('span').id;
-    const dotId = info.querySelector('.status-dot').id;
-
-    log(`⟳ 복호화 중... ${unvulUrl.substring(0, 40)}...`, 'info');
-
-    // SDK처럼 복호화 후 src 교체
-    try {
-      const encoded = unvulUrl.slice(SCHEME.length);
-      const meta = await decrypt(encoded, _apiKey);
-
-      img.setAttribute('src', meta.url);
-      img.setAttribute('data-unvul-status', 'resolved');
-
-      document.getElementById(labelId).textContent = meta.name || 'file';
-      const dot = document.getElementById(dotId);
-      dot.className = 'status-dot resolved';
-
-      log(`✓ 해석 완료 → ${meta.url}`, 'ok');
-    } catch (e) {
-      img.setAttribute('data-unvul-status', 'error');
-      img.src = '';
-      document.getElementById(labelId).textContent = '복호화 실패';
-      document.getElementById(dotId).className = 'status-dot error';
-      log('✗ 복호화 실패 — API Key 확인', 'err');
-    }
-  };
-
-  // ─── 로그 ─────────────────────────────────────────────
-  function log(msg, type = 'info') {
-    const box = document.getElementById('logBox');
-    const line = document.createElement('div');
-    const time = new Date().toLocaleTimeString('ko-KR');
-    line.className = type === 'ok' ? 'log-ok' : type === 'err' ? 'log-err' : 'log-info';
-    line.textContent = `[${time}] ${msg}`;
-    box.appendChild(line);
-    box.scrollTop = box.scrollHeight;
-  }
-
-  // ─── Toast ────────────────────────────────────────────
-  function showToast(msg, err = false) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.background = err ? 'var(--accent2)' : 'var(--accent)';
-    t.style.color = err ? '#fff' : '#000';
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2400);
-  }
-
-  log('unvul-pov SDK 테스트 페이지 로드됨', 'info');
-</script>
+<footer>
+  <p>© 2026 unvul-pov. All rights reserved.</p>
+  <p>NO DB · NO SERVER · NO COST</p>
+</footer>
 
 </body>
 </html>
